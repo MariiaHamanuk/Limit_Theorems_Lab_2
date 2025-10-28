@@ -137,7 +137,7 @@ m <- 35 * 10^(-6)
 n <- 5
 M <- 136.907089 # gram / mol this is the mass of c137
 Na <- 6 * 10^23
-n_list <- seq(5, 10, 50)
+n_list <- c(5, 10, 50)
 # we need consistent units so our T must be converted from years to seconds we will calculate everything in seconds
 
 T <- 30.1 * 365 * 24 * 60 * 60
@@ -192,6 +192,113 @@ curve(pnorm(x, mean = mu, sd = sigma), col = "red", lwd = 2, add = TRUE)
 ```
 
 **Next, proceed with all the remaining steps. To sum up:**
+
+```{r}
+max_diffs <- numeric(length(n_list))    
+
+for (i in 1:length(n_list)) {
+  n <- n_list[i]
+
+  sample_means <- colMeans(matrix(rpois(n * K, lambda = mu), nrow = n))
+  
+  x_points <- seq(xlims[1], xlims[2], length.out = 1000)
+
+  max_diffs[i] <- max(abs(ecdf_vals - cdf_vals))
+}
+
+print("Maximal Differences")
+names(max_diffs) <- paste("n=", n_list)
+print(max_diffs)
+print("As n gets bigger we can sees that diff between cdf and ecdf gets smaller and smaller. which numerically confirms clt")
+
+```
+
+```{r}
+bound <- 8*10^8
+# Markov's Inequality
+# P(S n>= 8*10^8) <= E(Sn) / 8*10^8
+# E(Sn) / 8*10^8 <= 1-0.95 = 0.05
+# n * mu / 8*10^8 <= 0.05
+# n <= (0.05 * 8*10^8) / mu
+#print(bound)
+#print(mu)
+n_markov <- ((0.05 * bound) / mu)
+cat("n <=", n_markov)
+
+
+```
+
+```{r}
+
+# CLT
+# We want P(Sn >=  8*10^8) <= 0.05
+# 
+# at first we can standardize it cause it has aproximately normal distribution (Sn - n*mu) / sqrt(n*mu) >= ( 8*10^8 - n*mu) / sqrt(n*mu)
+# The 95th percentile for a standard Normal is z = 1.645
+# So, we need: (8*10^8 - n*mu) / sqrt(n*mu) >= 1.645
+# 8*10^8 - sqrt(n)^2*mu >= 1.645 * sqrt(n) * sqrt(mu)
+# mu*sqrt(n)^2 + (1.645*sqrt(mu))*sqrt(n) -  8*10^8 <= 0
+
+x <- (-( 1.645 * sqrt(mu)) + sqrt(( 1.645 * sqrt(mu))^2 - 4 * mu * (-bound))) / (2 * mu)
+n_clt <- x^2
+
+cat("CLT: n <=", x_solution^2)
+
+```
+
+```{r}
+
+
+chernoff_bound_poisson <- function(n, mu, a) {
+  lambda <- n * mu
+  
+  if (a <= lambda) {
+    return(1.0)
+  }
+  
+  delta <- (a / lambda) - 1
+
+  bound <- (exp(delta) / (1 + delta)^(1 + delta))^lambda
+  
+  return(bound)
+}
+
+n_chernoff <- 0
+
+for (n_test in n_clt:1) {
+  prob_bound <- chernoff_bound_poisson(n_test, mu, bound)
+  
+  if (!is.nan(prob_bound) && prob_bound <= 0.05) {
+    n_chernoff <- n_test
+    break
+  }
+}
+
+cat("Chernoff bound", n_chernoff)
+
+
+cat("  The CLT gives the most realistic result n=", n_clt, " and Chernoff bound gives  tighter (we say it in sense that it is closer to truth)",n_markov," n=", n_chernoff, " than Markov's n=", n_markov)
+
+```
+
+```{r}
+
+K_large <- 10000
+
+set.seed(35)
+sample_sums <- rpois(K_large, lambda = n_clt * mu_poisson)
+
+successes <- sum(sample_sums < critical_value)
+empirical_prob <- successes / K_large
+
+cat(" n =", n_clt, "with K =", K_large)
+cat("  empirical probability of sum < 8*10^8 is:", empirical_prob, "\n")
+print("The simulated probability is close to our target of 0.95, which confirms that our calculation for n using the CLT was correct")
+
+
+
+
+```
 
 Analyzing the plot: This plot is really beautiful, it clearly shows us that emperical cdf of our experimental data which is almost the same as theoretical cdf of Normal distribution with parameters that you can see above. First of all it is like visual confirmation that CLT works. Even though we had Poisson distribution for each particular x the distribution of the sample means is really close to normal distribution!!
 
