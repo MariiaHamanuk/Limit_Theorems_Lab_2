@@ -58,17 +58,17 @@ $$
 3.  What choice of $N$ guarantees that $\varepsilon \le 0.03$?\
 4.  Draw the histogram of the number $k = 0,1,2,3,4$ of errors while transmitting a $4$-digit binary message. Do you think it is one of the known distributions?
 
-#### You can (but do not have to) use the chunks we prepared for you
+**1**
 
 #### First, we set the **id** of the team and define the probability $p$ and the generator and parity-check matrices $G$ and $H$
 
 ```{r}
-# your team id number 
-                          ###
-id <- 35                 ### Change to the correct id!
-                          ###
+# team id number 
+id <- 35                 
+
 set.seed(id)
-p <- id/100
+p <- id/100 
+
 # matrices G and H
 G <- matrix(c(1, 1, 1, 0, 0, 0, 0,
 		1, 0, 0, 1, 1, 0, 0,
@@ -77,15 +77,18 @@ G <- matrix(c(1, 1, 1, 0, 0, 0, 0,
 H <- t(matrix(c(1, 0, 1, 0, 1, 0, 1,
 		0, 1, 1, 0, 0, 1, 1,
 		0, 0, 0, 1, 1, 1, 1), nrow = 3, byrow = TRUE))
-# cat("The matrix G is: \n") 
+
+mod2 <- function(x) x %% 2
+
+#cat("The matrix G is: \n") 
 #G  
 #cat("The matrix H is: \n") 
 #H
 #cat("The product GH must be zero: \n")
-#(G%*%H) %%2
+#mod2(G%*%H)
 ```
 
-#### Next, generate the messages
+#### Next, we generate the messages
 
 ```{r}
 # generate N messages
@@ -93,20 +96,136 @@ H <- t(matrix(c(1, 0, 1, 0, 1, 0, 1,
 message_generator <- function(N) {
   matrix(sample(c(0,1), 4*N, replace = TRUE), nrow = N)
 }  
-messages <- message_generator(100)
-codewords <- (messages %*% G) %% 2
+
+N_mess = 100
+messages <- message_generator(N_mess)
+codewords <- mod2(messages %*% G)
+
 ```
 
 #### Generate random errors; do not forget that they occur with probability $p$! Next, generate the received messages
 
 ```{r}
-#  errors <- ...
-#  received <-   
+
+E <- matrix(rbinom(N_mess*7, 1, p), nrow = N_mess, ncol = 7) # noice
+r <- mod2(codewords + E) # what we resieve
 ```
 
-The next steps include detecting the errors in the received messages, correcting them, and then decoding the obtained messages. After this, you can continue with calculating all the quantities of interest
+**Detecting errors**
 
-**Do not forget to include several sentences summarizing your work and the conclusions you have made!**
+```{r}
+Z <- mod2(r %*% H) # check which bits are corrupted
+j <- Z[,1] + 2*Z[,2] + 4*Z[,3] # error index
+```
+
+**Correcting them**
+
+```{r}
+correct <- matrix(0L, nrow = N_mess, ncol = 7)
+idx <- which(j>0)
+if (length(idx)>0) correct[cbind(idx, j[idx])] <- 1L
+r_fixed <- mod2(r + correct)
+```
+
+**Decoding**
+
+```{r}
+m_dec <- r_fixed[, c(3, 5, 6, 7), drop=FALSE]
+success <- rowSums(m_dec != messages) == 0
+p_hat <- mean(success)
+res <- list(phat=p_hat, success=success,
+       codewords=codewords, received=r, received_fix=r_fixed, Z=Z, j=j)
+```
+
+**Now let's check how close we are**
+
+```{r}
+p_theory <- (1-p)^7 + 7*p*(1-p)^6 #p*
+
+cat(sprintf("Emperical p*: %.5f\n", p_hat))
+cat(sprintf("Theoretical p*: %.5f\n\n", p_theory))
+```
+
+We expect $\hat p$ to be close to $p^*$ for large $N$ because of the Weak Law of Large Numbers.
+
+**2**
+
+For estimated standard error we have this formula:
+
+$$\widehat{SE} = \sqrt{\frac{\hat p(1-\hat p)}{N}}$$
+
+Let's find it.
+
+```{r}
+SE <- sqrt(p_hat*(1-p_hat)/N_mess)
+SE
+```
+
+Now we can find **approximate** 95% confidence interval for the true success probability $p^*$
+
+​$$\hat p \pm 1.96\widehat{SE}$$
+
+```{r}
+eps <- 1.96*SE
+cat(sprintf("95%% CI: [%.5f, %.5f]  (ε = %.5f)\n\n", p_hat - eps, p_hat + eps, eps))
+```
+
+**3**
+
+Here we need:
+
+$$
+1.96\sqrt{\frac{\hat p(1-\hat p)}{N}} \leq 0.03
+$$
+
+The worst case for Var of Binomial distribution is $\hat p(1-\hat p) \leq \frac{1}{4}$.
+
+So:
+
+$$
+N \geq (\frac{1.96\sqrt{0.25}}{0.03})^2
+$$
+
+```{r}
+N_needed <- ceiling( (1.96*sqrt(0.25)/0.03)^2 )
+cat(sprintf("Minimum N for ε ≤ 0.03: %d\n\n", N_needed))
+```
+
+**4**
+
+Now let's see the histogram.
+
+```{r}
+M  <- 20000
+k <- rbinom(M, size = 4, prob = p)
+
+tab <- table(factor(k, levels=0:4))
+freq <- as.numeric(tab) / sum(tab)
+
+kvals <- 0:4
+probs <- dbinom(kvals, size = 4, prob = p)
+
+op <- par(mar=c(4,4,2,1))
+bp <- barplot(freq,
+              names.arg = kvals,
+              xlab = "k (num of errors)",
+              ylab = "probability",
+              main = sprintf("Errors in 4-bit transmission (p=%.2f)", p))
+
+points(bp, probs, pch = 19) # black - theoretical
+lines(bp, probs, lwd = 2)
+legend("topright", c("Emperical", "Theor. Bin(4,p)"),
+       pch = c(15,19), lty = c(0,1), bty = "n")
+par(op)
+
+
+```
+
+And that's Binomial distribution $k \sim Bin(4,p)$!
+
+### Little summary
+
+We learned how reliable the Hamming [7,4] code is under bit-flip noise p=id/100: by simulation we get $\hat p$​, the fraction of messages that decode correctly, which converges to the true success probability $p^*$. We quantify uncertainty with a 95% confidence interval $\hat p \pm 1.96\sqrt{\hat p(1-\hat p)/N}$​, so more trials make the estimate tighter. To guarantee a margin of at most 0.03, about $N≥1068$ runs are needed. And the number of errors when sending an uncoded 4-bit message follows a Binomial(4,p) distribution. That's it.
 
 ------------------------------------------------------------------------
 
