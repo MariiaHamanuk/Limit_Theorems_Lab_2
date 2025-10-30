@@ -160,7 +160,7 @@ mu # = 112007142
 # we have poisson distribution so it is easy for us to find sigma (= lambda) but we also should not forget that we search it per element and we have n of elements (=lambda/times). and sd would be sqrt of that value. BUT first I still calculated for all x-s 
 var_for_all <- mu
 #sd_for_all <- sqrt(var_for_all) # in other words it is for whole distribution but since they are independent than later on we can just devide it by n (sum of independent poisson rv = poisson rv with new parameter)
-sigma_for_all # = 1.460435e-10
+#sigma_for_all # = 1.460435e-10
 #sd_for_all # = 1.208485e-05
 K <- 1e3 # times that our experiment is going to be repeated 1000
 
@@ -246,7 +246,7 @@ cat("n <=", n_markov)
 x <- (-( 1.645 * sqrt(mu)) + sqrt(( 1.645 * sqrt(mu))^2 - 4 * mu * (-bound))) / (2 * mu)
 n_clt <- x^2
 
-cat("CLT: n <=", x_solution^2)
+cat("CLT: n <=", x^2)
 
 ```
 
@@ -275,9 +275,9 @@ cat("Chernoff bound n_max =", n_chernoff, "\n")
 K_large <- 10000
 
 set.seed(35)
-sample_sums <- rpois(K_large, lambda = n_clt * mu_poisson)
+sample_sums <- rpois(K_large, lambda = n_clt * mu)
 
-successes <- sum(sample_sums < critical_value)
+successes <- sum(sample_sums < 8e8)
 empirical_prob <- successes / K_large
 
 cat(" n =", n_clt, "with K =", K_large)
@@ -308,19 +308,19 @@ One of the devices to measure radioactivity level at a given location is the Gei
 
 Show that the distribution of the sample means of $X_1, X_2,\dots,X_n$ gets very close to a normal one (which one?) as $n$ becomes large. To this end,
 
-simulate the realizations $x_1,x_2,\dots,x_n$ of the \textbf{r.v.} $X_i$ and calculate the sample mean $s=\overline{\mathbf{x}}$;
+simulate the realizations $x_1,x_2,\dots,x_n$ of the $\textbf{r.v.}$ $X_i$ and calculate the sample mean $s=\overline{\mathbf{x}}$;
 
-repeat this $K$ times to get the sample $\mathbf{s}=(s_1,\dots,s_K)$ of means and then the \emph{empirical cumulative distribution} function $F_{\mathbf{s}}$ of $\mathbf{s}$;
+repeat this $K$ times to get the sample $\mathbf{s}=(s_1,\dots,s_K)$ of means and then the $\textit{empirical cumulative distribution}$ function $F_{\mathbf{s}}$ of $\mathbf{s}$;
 
-identify $\mu$ and $\sigma^2$ such that the \textbf{c.d.f.} of $\mathscr{N}(\mu,\sigma^2)$ is close to the \textbf{e.c.d.f.} $F_{\mathbf{s}}$ of and plot both \textbf{c.d.f.}'s on one graph to visualize their proximity;
+identify $\mu$ and $\sigma^2$ such that the $\textbf{c.d.f.}$ of $\mathscr{N}(\mu,\sigma^2)$ is close to the $\textbf{e.c.d.f.}$ $F_{\mathbf{s}}$ of and plot both $\textbf{c.d.f.}$'s on one graph to visualize their proximity;
 
-calculate the maximal difference between the two \textbf{c.d.f.}'s;
+calculate the maximal difference between the two $\textbf{c.d.f.}$'s;
 
 consider cases $n = 5$, $n = 10$, $n=50$ and comment on the results.
 
 The place can be considered safe when the number of clicks in one minute does not exceed $100$. It is known that the parameter $\nu$ of the resulting exponential distribution is proportional to the number $N$ of the radioactive samples, i.e., $\nu = \nu_1*N$, where $\nu_1$ is the parameter for one sample. Determine the maximal number of radioactive samples that can be stored in that place so that, with probability $0.95$, the place is identified as safe. To do this,
 
-express the event of interest in terms of the \textbf{r.v.} $S:= X_1 + \cdots + X_{100}$;
+express the event of interest in terms of the $\textbf{r.v.}$ $S:= X_1 + \cdots + X_{100}$;
 
 obtain the theoretical bounds on $N$ using the Markov inequality, Chernoff bound and Central Limit Theorem and compare the results;
 
@@ -354,9 +354,10 @@ exp_sd <- exp_mean
 mu <- exp_mean  
 sigma <- exp_sd / sqrt(n)
 #print(n)
+```
 
 We can now plot ecdf and cdf
-```
+
 ```{r}
 xlims <- c(mu-3*sigma,mu+3*sigma)
 Fs <- ecdf(sample_means)
@@ -367,6 +368,7 @@ plot(Fs,
      main = "Comparison of ecdf and cdf")
 curve(pnorm(x, mean = mu, sd = sigma), col = "red", lwd = 2, add = TRUE)
 ```
+
 ```{r}
 # now let's do it for 5, 10, 50 and find differences
 
@@ -395,7 +397,9 @@ for (i in seq_along(n_list)) {
   cat("n =", n, " mu =", round(mu,4), " sigma =", round(sigma,4),
       " max diff =", round(max_diffs[i],4), "\n")
 }
+# So here we measure how far the empirical distribution is from the theoretical normal distribution. We see that the bigger n we take, the smaller the difference between them becomes which signifies that the empirical distribution gets closer and closer to the normal distribution. This is a great example of Central Linit Theorem.
 ```
+
 ```{r}
 
 #markov
@@ -408,19 +412,21 @@ desired_prob <- 0.95
 # P(X <= 100) >= 0.95
 # P(X >= 101) <= lambda/101 <= 0.05 ->
 # -> lambda = 5,05
-# and this is poisson distribution so we know our lambda and it is E(X) = nu1 * N *60 it is the radioctivity (nu1 * 60 sec) in N times
+# and this is poisson distribution so we know our lambda and it is E(X) = nu1 * N *60 it is the radioactivity (nu1 * 60 sec) in N times
 
 # nu1 * N *60 = 5.05
 # we know nu1 = 45
-# N = 5.05/45*60
+# N = 5.05/45
 
 lambda <- (1 - desired_prob) * (m + 1)
-#N_markov <- 5.05 / (60 * 45)
 print(lambda)
-N_markov <- lambda / (time_limit * nu1)
+N_markov <- lambda / (nu1)
 print(N_markov)
 #n_markov <- m / (3 * nu1)
+
+# Markov's inequality gives us upper bound that will be true but will not be precise.
 ```
+
 ```{r}
 #CLT 
 
@@ -431,22 +437,15 @@ c <- -100
 
 x_solution <- (-b + sqrt(b^2 - 4*a*c)) / (2*a)
 lambda_clt <- x_solution^2
-N_clt_final <- lambda_clt / (60 * nu1)
+N_clt_final <- lambda_clt / ( nu1)
 
-cat("Solving quadratic equation:\n")
-cat("x^2 + 1.645*x - 100 = 0\n")
 cat("x =", x_solution, "\n")
 cat("lambda =", lambda_clt, "\n")
 cat("N_max, not rounded =", N_clt_final, "\n")
 cat("N_max =", floor(N_clt_final), "\n\n")
 
-$$
-P(S≥t) ≤ exp(-st)E[exp(sS)]​=exp(−st)*MS​n(s).
-$$
-
-$$Mx(s) = E(exp(sX)) = p / p-s$$
+# CLT gives us really good and precise estimation that is close to the true value.
 ```
-
 
 ```{r}
 # Chernoff
@@ -462,9 +461,10 @@ chernoff_log <- function(N) {
 N_chernoff <- uniroot(chernoff_log,  interval = c(1e-10, k/mu - 1e-6))$root
 cat("Chernoff bound N_max =", N_chernoff, "\n")
 cat("Rounded down =", floor(N_chernoff), "\n")
+
+# Chernoff's inequality gives tighter upper bound than Markov's inequality but still not quite precise.
+
 ```
-
-
 
 ```{r}
 nu1 <- 45
@@ -473,7 +473,7 @@ time_limit <- 60
 desired_prob <- 0.95
 
 cdf_diff <- function(lambda) {
-  #we have k iid rv with exponential distrution wwith paramerter x so we can say that thei sum will equal Gamma distribution with parameters 100 and x
+  #we have k iid rv with exponential distribution with parameter x so we can say that thei sum will equal Gamma distribution with parameters 100 and x
   rate <- lambda / time_limit
   pgamma(time_limit, shape = k, scale = 1/rate) - (1-desired_prob)
 }
@@ -489,14 +489,39 @@ rate_sim <- lambda_true / time_limit
 samps <- rgamma(Ksim, shape = k, scale = 1/rate_sim)
 prob_est <- mean(samps > time_limit)
 cat("P(s>60) emperical with lambda:", prob_est, "\n")
+
+# This gives the true and numerically precise value that is also close to what CLT gave us earlier which again validates the results CLT gives us.
 ```
 
-Next, proceed with all the remaining steps
+What we have done in task 3:
 
-Do not forget to include several sentences summarizing your work and the conclusions you have made!
+Part 1:
 
-When we calculated Markovs inequality was the loosest on  we've got 0 it doesn't really shows us anything.
-------------------------------------------------------------------------
+We observed and concluded that:
+
+-   The empirical distributions of sample means $\overline{X}$ for exponential random variables converge rapidly to the normal distribution as the sample size $n$ increases.
+
+-   The plots show that:
+
+    -   For n=5, there is noticeable deviation from normality (distribution is still somewhat skewed).
+
+    -   For n=10, the approximation is already quite good.
+
+    -   For n=50, the ECDF and theoretical normal CDF are nearly identical — confirming the CLT very clearly.
+
+Part 2:
+
+-   We found the **maximum number of radioactive samples** that keeps the place safe (probability of at least 60 seconds between 100 clicks ≥ 0.95).
+
+-   We used three theoretical methods — **Markov inequality**, **Chernoff bound**, and **Central Limit Theorem** — and compared them.
+
+-   We also solved for the **exact Gamma case** numerically and verified the result by simulation.
+
+-   The results showed that:
+
+    -   Markov gives the lowest and most conservative N,
+    -   Chernoff improves on it,
+    -   CLT and simulation match almost perfectly.
 
 ### Task 4.
 
