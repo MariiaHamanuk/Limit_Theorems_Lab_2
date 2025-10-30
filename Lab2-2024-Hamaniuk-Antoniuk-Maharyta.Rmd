@@ -8,17 +8,13 @@ output:
 
 ## General comments and instructions
 
--   Complete solution will give you **4 points** (working code with explanations + oral defense). Submission deadline **November 1, 2023, 22:00**\
--   The report must be prepared as an *R notebook*; you must submit to **cms** both the source *R notebook* **and** the generated html file\
--   At the beginning of the notebook, provide a work-breakdown structure estimating efforts of each team member\
--   For each task, include
-    -   problem formulation and discussion (what is a reasonable answer to discuss);\
-    -   the corresponding $\mathbf{R}$ code with comments (usually it is just a couple of lines long);\
-    -   the statistics obtained (like sample mean or anything else you use to complete the task) as well as histograms etc to illustrate your findings;\
-    -   justification of your solution (e.g. refer to the corresponding theorems from probability theory);\
-    -   conclusions (e.g. how reliable your answer is, does it agree with common sense expectations etc)\
--   The **team id number** referred to in tasks is the **two-digit** ordinal number of your team on the list. Include the line **set.seed(team id number)** at the beginning of your code to make your calculations reproducible. Also observe that the answers **do** depend on this number!\
--   Take into account that not complying with these instructions may result in point deduction regardless of whether or not your implementation is correct.
+Distribution:
+
+-   Iia Maharyta: task 1 and conclusions;
+
+-   Maria Hamaniuk: tasks 2 and 3;
+
+-   Daryna Antoniuk: task 4.
 
 ------------------------------------------------------------------------
 
@@ -781,4 +777,10 @@ Part 2:
 
 ### General summary and conclusions
 
-Summarize here what you've done, whether you solved the tasks, what difficulties you had etc.
+**Task 1 - Hamming [7,4].** We encoded random 4-bit messages, sent 7-bit codewords through a noisy channel with bit-flip rate $id/100$ , corrected with the H, and measured how often decoding succeeded. The simulation success rate $\hat p$ estimates the true success p* and agrees with the idea that averaging many trials reveals the real reliability (LLN/CLT). We also used the known formula “0 or 1 error among 7 bits” for a theory check and reported a 95% CI. To keep the $\epsilon$ ≤0.03, about N≈1068 trials are enough. Finally, the histogram of errors for a raw 4-bit message matches a Binomial(4,p) law.
+
+**Task 2 - CLT with count data (radioactivity).** We modeled radioactive decays with Poisson variables, looked at averages over many samples, and showed the empirical CDF of sample means is almost the same as a Normal CDF - so the Central Limit Theorem works well here. We also computed how large a sample is needed to reach a target probability and verified it by simulation.
+
+**Task 3 - CLT for continuous variables.** We repeated the CLT idea for continuous distributions: approximate the distribution of sums/averages by Normal, choose n from the CLT (and cross-check with bounds like Chernoff), and confirm by simulation.
+
+**Task 4 - Overall takeaways.** Across tasks we combined simulation and theory: we used coding theory facts (syndrome decoding for Hamming), binomial/Poisson models, confidence intervals from the normal approximation, and classic limit theorems (LLN/CLT), and we checked results visually with plots and numerically with probability bounds and sample-size formulas.
