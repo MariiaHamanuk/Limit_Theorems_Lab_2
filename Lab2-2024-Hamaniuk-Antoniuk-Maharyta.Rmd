@@ -195,14 +195,18 @@ curve(pnorm(x, mean = mu, sd = sigma), col = "red", lwd = 2, add = TRUE)
 
 ```{r}
 max_diffs <- numeric(length(n_list))    
-
+n_list <- c(5, 10, 50)
 for (i in 1:length(n_list)) {
   n <- n_list[i]
 
   sample_means <- colMeans(matrix(rpois(n * K, lambda = mu), nrow = n))
-  
+  #Fs <- ecdf(sample_means)
   x_points <- seq(xlims[1], xlims[2], length.out = 1000)
-
+  
+  x_grid <- seq(min(sample_means), max(sample_means), length.out = 1000)
+  ecdf_vals <- Fs(x_grid)
+  cdf_vals  <- pnorm(x_grid, mean = mu, sd = sigma)
+  
   max_diffs[i] <- max(abs(ecdf_vals - cdf_vals))
 }
 
@@ -247,37 +251,22 @@ cat("CLT: n <=", x_solution^2)
 ```
 
 ```{r}
+#Chernoff
+bound <- 8e8
+mu_per_sample <- mu
+desirable_prob <- 0.95
 
-
-chernoff_bound_poisson <- function(n, mu, a) {
-  lambda <- n * mu
-  
-  if (a <= lambda) {
-    return(1.0)
-  }
-  
-  delta <- (a / lambda) - 1
-
-  bound <- (exp(delta) / (1 + delta)^(1 + delta))^lambda
-  
-  return(bound)
+chernoff_log_root <- function(n) {
+  lambda <- n * mu_per_sample # calculating parameter of  sum of poisson rv 
+  log_prob <- -lambda + bound * (1 + log(lambda / bound)) 
+  return(log_prob - log(1 - desirable_prob))
 }
 
-n_chernoff <- 0
+library(stats)
+result <- uniroot(chernoff_log_root, lower = 1, upper = 8e8/mu)
+n_chernoff <- result$root
 
-for (n_test in n_clt:1) {
-  prob_bound <- chernoff_bound_poisson(n_test, mu, bound)
-  
-  if (!is.nan(prob_bound) && prob_bound <= 0.05) {
-    n_chernoff <- n_test
-    break
-  }
-}
-
-cat("Chernoff bound", n_chernoff)
-
-
-cat("  The CLT gives the most realistic result n=", n_clt, " and Chernoff bound gives  tighter (we say it in sense that it is closer to truth)",n_markov," n=", n_chernoff, " than Markov's n=", n_markov)
+cat("Chernoff bound n_max =", n_chernoff, "\n")
 
 ```
 
@@ -311,43 +300,63 @@ What we have done in task 2:
 
 ------------------------------------------------------------------------
 
-### Task 3.
+Task 3.
 
-#### In this task, we use the Central Limit Theorem approximation for continuous random variables.
+In this task, we use the Central Limit Theorem approximation for continuous random variables.
 
-#### One of the devices to measure radioactivity level at a given location is the Geiger counter. When the radioactive level is almost constant, the time between two consecutive clicks of the Geiger counter is an exponentially distributed random variable with parameter $\nu_1 = \mathtt{team\,id\,number} + 10$. Denote by $X_k$ the random time between the $(k-1)^{\mathrm{st}}$ and $k^{\mathrm{th}}$ click of the counter.
+One of the devices to measure radioactivity level at a given location is the Geiger counter. When the radioactive level is almost constant, the time between two consecutive clicks of the Geiger counter is an exponentially distributed random variable with parameter $\nu_1 = \mathtt{team\,id\,number} + 10$. Denote by $X_k$ the random time between the $(k-1)^{\mathrm{st}}$ and $k^{\mathrm{th}}$ click of the counter.
 
-1.  Show that the distribution of the sample means of $X_1, X_2,\dots,X_n$ gets very close to a normal one (which one?) as $n$ becomes large. To this end,
-    -   simulate the realizations $x_1,x_2,\dots,x_n$ of the \textbf{r.v.} $X_i$ and calculate the sample mean $s=\overline{\mathbf{x}}$;\
-    -   repeat this $K$ times to get the sample $\mathbf{s}=(s_1,\dots,s_K)$ of means and then the \emph{empirical cumulative distribution} function $F_{\mathbf{s}}$ of $\mathbf{s}$;\
-    -   identify $\mu$ and $\sigma^2$ such that the \textbf{c.d.f.} of $\mathscr{N}(\mu,\sigma^2)$ is close to the \textbf{e.c.d.f.} $F_{\mathbf{s}}$ of and plot both \textbf{c.d.f.}'s on one graph to visualize their proximity;\
-    -   calculate the maximal difference between the two \textbf{c.d.f.}'s;\
-    -   consider cases $n = 5$, $n = 10$, $n=50$ and comment on the results.
-2.  The place can be considered safe when the number of clicks in one minute does not exceed $100$. It is known that the parameter $\nu$ of the resulting exponential distribution is proportional to the number $N$ of the radioactive samples, i.e., $\nu = \nu_1*N$, where $\nu_1$ is the parameter for one sample. Determine the maximal number of radioactive samples that can be stored in that place so that, with probability $0.95$, the place is identified as safe. To do this,
-    -   express the event of interest in terms of the \textbf{r.v.} $S:= X_1 + \cdots + X_{100}$;\
-    -   obtain the theoretical bounds on $N$ using the Markov inequality, Chernoff bound and Central Limit Theorem and compare the results;\
-    -   with the predicted $N$ and thus $\nu$, simulate the realization $x_1,x_2,\dots,x_{100}$ of the $X_i$ and of the sum $S = X_1 + \cdots + X_{100}$;\
-    -   repeat this $K$ times to get the sample $\mathbf{s}=(s_1,\dots,s_K)$ of total times until the $100^{\mathrm{th}}$ click;\
-    -   estimate the probability that the location is identified as safe and compare to the desired level $0.95$
+Show that the distribution of the sample means of $X_1, X_2,\dots,X_n$ gets very close to a normal one (which one?) as $n$ becomes large. To this end,
 
-#### First, generate samples an sample means:
+simulate the realizations $x_1,x_2,\dots,x_n$ of the \textbf{r.v.} $X_i$ and calculate the sample mean $s=\overline{\mathbf{x}}$;
+
+repeat this $K$ times to get the sample $\mathbf{s}=(s_1,\dots,s_K)$ of means and then the \emph{empirical cumulative distribution} function $F_{\mathbf{s}}$ of $\mathbf{s}$;
+
+identify $\mu$ and $\sigma^2$ such that the \textbf{c.d.f.} of $\mathscr{N}(\mu,\sigma^2)$ is close to the \textbf{e.c.d.f.} $F_{\mathbf{s}}$ of and plot both \textbf{c.d.f.}'s on one graph to visualize their proximity;
+
+calculate the maximal difference between the two \textbf{c.d.f.}'s;
+
+consider cases $n = 5$, $n = 10$, $n=50$ and comment on the results.
+
+The place can be considered safe when the number of clicks in one minute does not exceed $100$. It is known that the parameter $\nu$ of the resulting exponential distribution is proportional to the number $N$ of the radioactive samples, i.e., $\nu = \nu_1*N$, where $\nu_1$ is the parameter for one sample. Determine the maximal number of radioactive samples that can be stored in that place so that, with probability $0.95$, the place is identified as safe. To do this,
+
+express the event of interest in terms of the \textbf{r.v.} $S:= X_1 + \cdots + X_{100}$;
+
+obtain the theoretical bounds on $N$ using the Markov inequality, Chernoff bound and Central Limit Theorem and compare the results;
+
+with the predicted $N$ and thus $\nu$, simulate the realization $x_1,x_2,\dots,x_{100}$ of the $X_i$ and of the sum $S = X_1 + \cdots + X_{100}$;
+
+repeat this $K$ times to get the sample $\mathbf{s}=(s_1,\dots,s_K)$ of total times until the $100^{\mathrm{th}}$ click;
+
+estimate the probability that the location is identified as safe and compare to the desired level $0.95$
+
+First, generate samples an sample means:
 
 ```{r}
-nu1 <- 1  # change this!
+nu1 <- 45
 K <- 1e3
-n <- 5
-sample_means <- colMeans(matrix(rexp(n*K, rate = nu1), nrow=n))
+#n <- 5
+n_list <- c(5, 10, 50)
+for (n in n_list){
+  sample_means <- colMeans(matrix(rexp(n*K, rate = nu1), nrow=n))
+  cat("for n =", n, " mean of sample means = ", mean(sample_means))
+
+}
 ```
 
-#### Next, calculate the parameters of the standard normal approximation
+Next, calculate the parameters of the standard normal approximation
 
 ```{r}
-mu <- 0       # change this!
-sigma <- 1    # change this!
+exp_mean <- 1/nu1
+exp_var <- 1 / nu1^2
+exp_sd <- exp_mean
+
+mu <- exp_mean  
+sigma <- exp_sd / sqrt(n)
+#print(n)
+
+We can now plot ecdf and cdf
 ```
-
-#### We can now plot ecdf and cdf
-
 ```{r}
 xlims <- c(mu-3*sigma,mu+3*sigma)
 Fs <- ecdf(sample_means)
@@ -358,11 +367,135 @@ plot(Fs,
      main = "Comparison of ecdf and cdf")
 curve(pnorm(x, mean = mu, sd = sigma), col = "red", lwd = 2, add = TRUE)
 ```
+```{r}
+# now let's do it for 5, 10, 50 and find differences
 
-**Next, proceed with all the remaining steps**
 
-**Do not forget to include several sentences summarizing your work and the conclusions you have made!**
+n_list <- c(5, 10, 50)
+max_diffs <- numeric(length(n_list))
 
+for (i in seq_along(n_list)) {
+  n <- n_list[i]
+  mat <- matrix(rexp(n*K, rate = nu1), nrow = n, ncol = K)
+  sample_means <- colMeans(mat)
+  mu <- 1/nu1
+  sigma <- (1/nu1) / sqrt(n)
+
+  Fs <- ecdf(sample_means)
+  xlim <- c(mu - 4*sigma, mu + 4*sigma)
+  plot(Fs, xlim = xlim, col = "blue", lwd = 2,
+       xlab = "mean", ylab = "CDF")
+  curve(pnorm(x, mean = mu, sd = sigma), add = TRUE, col = "red", lwd = 2)
+
+  x_grid <- seq(min(sample_means), max(sample_means), length.out = 1000)
+  ecdf_vals <- Fs(x_grid)
+  cdf_vals  <- pnorm(x_grid, mean = mu, sd = sigma)
+  max_diffs[i] <- max(abs(ecdf_vals - cdf_vals))
+
+  cat("n =", n, " mu =", round(mu,4), " sigma =", round(sigma,4),
+      " max diff =", round(max_diffs[i],4), "\n")
+}
+```
+```{r}
+
+#markov
+nu1 <- 35 + 10    
+m <- 100               
+time_limit <- 60
+desired_prob <- 0.95
+
+
+# P(X <= 100) >= 0.95
+# P(X >= 101) <= lambda/101 <= 0.05 ->
+# -> lambda = 5,05
+# and this is poisson distribution so we know our lambda and it is E(X) = nu1 * N *60 it is the radioctivity (nu1 * 60 sec) in N times
+
+# nu1 * N *60 = 5.05
+# we know nu1 = 45
+# N = 5.05/45*60
+
+lambda <- (1 - desired_prob) * (m + 1)
+#N_markov <- 5.05 / (60 * 45)
+print(lambda)
+N_markov <- lambda / (time_limit * nu1)
+print(N_markov)
+#n_markov <- m / (3 * nu1)
+```
+```{r}
+#CLT 
+
+
+a <- 1
+b <- 1.645
+c <- -100
+
+x_solution <- (-b + sqrt(b^2 - 4*a*c)) / (2*a)
+lambda_clt <- x_solution^2
+N_clt_final <- lambda_clt / (60 * nu1)
+
+cat("Solving quadratic equation:\n")
+cat("x^2 + 1.645*x - 100 = 0\n")
+cat("x =", x_solution, "\n")
+cat("lambda =", lambda_clt, "\n")
+cat("N_max, not rounded =", N_clt_final, "\n")
+cat("N_max =", floor(N_clt_final), "\n\n")
+
+$$
+P(S≥t) ≤ exp(-st)E[exp(sS)]​=exp(−st)*MS​n(s).
+$$
+
+$$Mx(s) = E(exp(sX)) = p / p-s$$
+```
+
+
+```{r}
+# Chernoff
+
+
+mu <- 45
+k <- 101
+desired_prob <- 0.95
+
+chernoff_log <- function(N) {
+  exp(k - mu*N ) * (mu*N/k)^k - (1 - desired_prob)
+}
+N_chernoff <- uniroot(chernoff_log,  interval = c(1e-10, k/mu - 1e-6))$root
+cat("Chernoff bound N_max =", N_chernoff, "\n")
+cat("Rounded down =", floor(N_chernoff), "\n")
+```
+
+
+
+```{r}
+nu1 <- 45
+k <- 100
+time_limit <- 60
+desired_prob <- 0.95
+
+cdf_diff <- function(lambda) {
+  #we have k iid rv with exponential distrution wwith paramerter x so we can say that thei sum will equal Gamma distribution with parameters 100 and x
+  rate <- lambda / time_limit
+  pgamma(time_limit, shape = k, scale = 1/rate) - (1-desired_prob)
+}
+
+sol <- uniroot(cdf_diff, lower = 1e-6, upper = 500)$root
+lambda_true <- sol
+N_true <- lambda_true / (60 * nu1)
+cat("lambda_true =", lambda_true, " N_true =", N_true, "\n")
+
+set.seed(123)
+Ksim <- 20000
+rate_sim <- lambda_true / time_limit
+samps <- rgamma(Ksim, shape = k, scale = 1/rate_sim)
+prob_est <- mean(samps > time_limit)
+cat("P(s>60) emperical with lambda:", prob_est, "\n")
+```
+
+Next, proceed with all the remaining steps
+
+Do not forget to include several sentences summarizing your work and the conclusions you have made!
+
+When we calculated Markovs inequality was the loosest on  we've got 0 it doesn't really shows us anything.
 ------------------------------------------------------------------------
 
 ### Task 4.
